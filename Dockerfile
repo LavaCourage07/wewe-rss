@@ -9,6 +9,8 @@ COPY . /usr/src/app
 WORKDIR /usr/src/app
 
 
+RUN pnpm install --frozen-lockfile
+
 RUN pnpm run -r build
 
 RUN pnpm deploy --filter=server --prod /app
