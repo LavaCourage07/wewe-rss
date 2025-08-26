@@ -16,6 +16,15 @@ RUN pnpm run -r build
 RUN pnpm deploy --filter=server --prod /app
 RUN pnpm deploy --filter=server --prod /app-sqlite
 
+# Copy built web client into server runtime and adjust template/assets paths
+RUN mkdir -p /app/client /app-sqlite/client && \
+    cp -r apps/web/dist/* /app/client/ && \
+    cp -r apps/web/dist/* /app-sqlite/client/ && \
+    mv /app/client/index.html /app/client/index.hbs && \
+    mv /app-sqlite/client/index.html /app-sqlite/client/index.hbs && \
+    sed -i 's#/assets/#/dash/assets/#g' /app/client/index.hbs && \
+    sed -i 's#/assets/#/dash/assets/#g' /app-sqlite/client/index.hbs
+
 RUN cd /app && pnpm exec prisma generate
 
 RUN cd /app-sqlite && \
