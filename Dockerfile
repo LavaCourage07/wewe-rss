@@ -5,18 +5,20 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN npm i -g pnpm@8.15.4
 
 FROM base AS build
-ARG GLOBAL_CACHE_BUST="2025-08-26-02"
-RUN echo "GLOBAL_CACHE_BUST=$GLOBAL_CACHE_BUST"
+ARG GLOBAL_CACHE_BUST="2025-08-26-03"
 COPY . /usr/src/app
 WORKDIR /usr/src/app
+# bust cache after COPY to force rebuild
+ARG POST_COPY_BUST="2025-08-26-03"
+RUN echo "POST_COPY_BUST=$POST_COPY_BUST"
 
 
 RUN pnpm install --frozen-lockfile
 
-RUN pnpm run -r build
+RUN pnpm run -r build && pnpm --filter web build
 
 # Verify web build output exists (fail fast if not)
-RUN test -f apps/web/dist/index.html && echo "Found apps/web/dist/index.html" || (echo "Missing apps/web/dist/index.html" && exit 1)
+RUN test -f apps/web/dist/index.html && echo "Found apps/web/dist/index.html" || (echo "Missing apps/web/dist/index.html" && ls -al apps/web && ls -al apps/web/dist || true && exit 1)
 RUN ls -al apps/web/dist | cat
 
 RUN pnpm deploy --filter=server --prod /app
