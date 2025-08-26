@@ -5,13 +5,10 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN npm i -g pnpm@8.15.4
 
 FROM base AS build
+ARG GLOBAL_CACHE_BUST="2025-08-26-02"
+RUN echo "GLOBAL_CACHE_BUST=$GLOBAL_CACHE_BUST"
 COPY . /usr/src/app
 WORKDIR /usr/src/app
-
-
-# cache bust to ensure fresh rebuild when Dockerfile changes
-ARG FORCE_REBUILD="2025-08-26-01"
-RUN echo "FORCE_REBUILD=$FORCE_REBUILD"
 
 
 RUN pnpm install --frozen-lockfile
@@ -25,14 +22,7 @@ RUN ls -al apps/web/dist | cat
 RUN pnpm deploy --filter=server --prod /app
 RUN pnpm deploy --filter=server --prod /app-sqlite
 
-# Copy built web client into server runtime and adjust template/assets paths
-RUN mkdir -p /app/client /app-sqlite/client && \
-    cp -r apps/web/dist/* /app/client/ && \
-    cp -r apps/web/dist/* /app-sqlite/client/ && \
-    mv /app/client/index.html /app/client/index.hbs && \
-    mv /app-sqlite/client/index.html /app-sqlite/client/index.hbs && \
-    sed -i 's#/assets/#/dash/assets/#g' /app/client/index.hbs && \
-    sed -i 's#/assets/#/dash/assets/#g' /app-sqlite/client/index.hbs
+## NOTE: we no longer copy web dist into /app here; we will copy in final stage to avoid cache issues
 
 RUN cd /app && pnpm exec prisma generate
 
@@ -63,6 +53,11 @@ CMD ["./docker-bootstrap.sh"]
 
 FROM base AS app
 COPY --from=build /app /app
+
+# Copy built web UI from build stage into final image explicitly and prepare hbs
+COPY --from=build /usr/src/app/apps/web/dist /app/client
+RUN [ -f /app/client/index.html ] && mv /app/client/index.html /app/client/index.hbs || true
+RUN sed -i 's#/assets/#/dash/assets/#g' /app/client/index.hbs || true
 
 WORKDIR /app
 
