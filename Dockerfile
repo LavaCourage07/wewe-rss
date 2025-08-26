@@ -13,6 +13,10 @@ RUN pnpm install --frozen-lockfile
 
 RUN pnpm run -r build
 
+# Verify web build output exists (fail fast if not)
+RUN test -f apps/web/dist/index.html && echo "Found apps/web/dist/index.html" || (echo "Missing apps/web/dist/index.html" && exit 1)
+RUN ls -al apps/web/dist | cat
+
 RUN pnpm deploy --filter=server --prod /app
 RUN pnpm deploy --filter=server --prod /app-sqlite
 
