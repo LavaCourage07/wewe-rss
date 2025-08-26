@@ -9,6 +9,11 @@ COPY . /usr/src/app
 WORKDIR /usr/src/app
 
 
+# cache bust to ensure fresh rebuild when Dockerfile changes
+ARG FORCE_REBUILD="2025-08-26-01"
+RUN echo "FORCE_REBUILD=$FORCE_REBUILD"
+
+
 RUN pnpm install --frozen-lockfile
 
 RUN pnpm run -r build
@@ -60,6 +65,9 @@ FROM base AS app
 COPY --from=build /app /app
 
 WORKDIR /app
+
+# list client to verify index.hbs exists in final image
+RUN ls -al /app || true && ls -al /app/client || true
 
 EXPOSE 4000
 
